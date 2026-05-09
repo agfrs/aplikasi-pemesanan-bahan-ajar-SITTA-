@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SITTA – Informasi Bahan Ajar</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<nav class="navbar" id="navbar"></nav>
+
+<main class="page">
+
+  <div class="page-header fade-in-up">
+    <h1>📦 Informasi Bahan Ajar</h1>
+    <p>Daftar stok bahan ajar yang tersedia di seluruh UPBJJ</p>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="card fade-in-up delay-1" style="margin-bottom:24px">
+    <div class="card-body" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+        <div class="input-icon-wrap">
+          <span class="icon">🔍</span>
+          <input type="text" id="searchInput" class="form-control" placeholder="Cari nama / kode barang..." oninput="filterTable()" style="min-width:240px" />
+        </div>
+        <select id="filterJenis" class="form-control" onchange="filterTable()" style="width:auto">
+          <option value="">Semua Jenis</option>
+          <option value="BMP">BMP</option>
+          <option value="Suplemen">Suplemen</option>
+        </select>
+      </div>
+      <button class="btn btn-gold" onclick="openModal('modalTambah')">＋ Tambah Stok</button>
+    </div>
+  </div>
+
+  <!-- Summary alert -->
+  <div id="stokAlert" class="alert"></div>
+
+  <!-- View Toggle -->
+  <div style="display:flex;justify-content:flex-end;gap:8px;margin-bottom:16px" class="fade-in-up delay-2">
+    <button class="btn btn-outline btn-sm" id="btnGrid" onclick="setView('grid')" style="font-size:18px;padding:6px 12px">⊞</button>
+    <button class="btn btn-outline btn-sm" id="btnTable" onclick="setView('table')" style="font-size:18px;padding:6px 12px">☰</button>
+  </div>
+
+  <!-- Grid View -->
+  <div id="gridView" class="book-grid" style="margin-bottom:32px"></div>
+
+  <!-- Table View -->
+  <div id="tableView" style="display:none;margin-bottom:32px">
+    <div class="card">
+      <div class="card-body" style="padding:0">
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cover</th>
+                <th>Kode Lokasi</th>
+                <th>Kode Barang</th>
+                <th>Nama Bahan Ajar</th>
+                <th>Jenis</th>
+                <th>Edisi</th>
+                <th>Stok</th>
+                <th>Status</th>
+                <th>Aksi</th>
+              </tr>
+            </thead>
+            <tbody id="stokTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- ══ Modal: Tambah Stok Baru ══ -->
+<div class="modal-overlay" id="modalTambah">
+  <div class="modal-box" style="max-width:520px">
+    <div class="modal-header">
+      <h2>＋ Tambah Stok Baru</h2>
+      <button class="modal-close" onclick="closeModal('modalTambah')">✕</button>
+    </div>
+    <div id="tambahAlert" class="alert"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Kode Lokasi</label>
+        <input type="text" id="inpLokasi" class="form-control" placeholder="cth. 0JKT01" />
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Kode Barang</label>
+        <input type="text" id="inpKode" class="form-control" placeholder="cth. EKMA4310" />
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:14px">
+      <label>Nama Bahan Ajar</label>
+      <input type="text" id="inpNama" class="form-control" placeholder="Judul buku / modul" />
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div class="form-group" style="margin-bottom:0">
+        <label>Jenis</label>
+        <select id="inpJenis" class="form-control">
+          <option>BMP</option>
+          <option>Suplemen</option>
+          <option>Lainnya</option>
+        </select>
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Edisi</label>
+        <input type="number" id="inpEdisi" class="form-control" placeholder="1" min="1" />
+      </div>
+      <div class="form-group" style="margin-bottom:0">
+        <label>Stok Awal</label>
+        <input type="number" id="inpStok" class="form-control" placeholder="0" min="0" />
+      </div>
+    </div>
+    <div style="display:flex;gap:10px;margin-top:20px">
+      <button class="btn btn-primary" style="flex:1" onclick="tambahStok()">Simpan Data</button>
+      <button class="btn btn-outline" onclick="closeModal('modalTambah')">Batal</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Modal: Detail Bahan Ajar ══ -->
+<div class="modal-overlay" id="modalDetail">
+  <div class="modal-box" style="max-width:480px">
+    <div class="modal-header">
+      <h2>📖 Detail Bahan Ajar</h2>
+      <button class="modal-close" onclick="closeModal('modalDetail')">✕</button>
+    </div>
+    <div id="detailContent"></div>
+  </div>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/script.js"></script>
+<script>
+  if (!requireAuth()) throw new Error('not auth');
+  renderNavbar('stok');
+
+  let currentView = 'grid';
+  let displayData = [...dataBahanAjar];
+
+  function setView(v) {
+    currentView = v;
+    document.getElementById('gridView').style.display  = v === 'grid'  ? 'grid'  : 'none';
+    document.getElementById('tableView').style.display = v === 'table' ? 'block' : 'none';
+    document.getElementById('btnGrid').className  = 'btn btn-sm ' + (v==='grid'  ? 'btn-primary' : 'btn-outline');
+    document.getElementById('btnTable').className = 'btn btn-sm ' + (v==='table' ? 'btn-primary' : 'btn-outline');
+    renderAll();
+  }
+
+  function filterTable() {
+    const q    = document.getElementById('searchInput').value.trim().toLowerCase();
+    const jenis = document.getElementById('filterJenis').value;
+    displayData = dataBahanAjar.filter(b => {
+      const matchQ = !q || b.namaBarang.toLowerCase().includes(q) || b.kodeBarang.toLowerCase().includes(q);
+      const matchJ = !jenis || b.jenisBarang === jenis;
+      return matchQ && matchJ;
+    });
+    renderAll();
+  }
+
+  function renderAll() {
+    renderGrid();
+    renderTableRows();
+  }
+
+  function renderGrid() {
+    const grid = document.getElementById('gridView');
+    grid.innerHTML = '';
+    if (displayData.length === 0) {
+      grid.innerHTML = '<p style="color:var(--text-3);font-size:14px;padding:20px">Tidak ada data yang cocok.</p>';
+      return;
+    }
+    displayData.forEach((b, i) => {
+      const stokBadge = b.stok > 300 ? 'green' : b.stok > 150 ? 'amber' : 'red';
+      const stokLabel = b.stok > 300 ? 'Tersedia' : b.stok > 150 ? 'Terbatas' : 'Hampir Habis';
+      const card = document.createElement('div');
+      card.className = 'book-card fade-in-up';
+      card.style.animationDelay = (i * 0.06) + 's';
+      card.innerHTML = `
+        <div class="book-cover">
+          <img src="${b.cover}" alt="${b.namaBarang}" onerror="this.src='';this.parentElement.style.background='linear-gradient(135deg,#1A4A8A,#2E7BD6)';this.style.display='none'" />
+        </div>
+        <div class="book-info">
+          <div class="book-code">${b.kodeBarang}</div>
+          <div class="book-title">${b.namaBarang}</div>
+          <div class="book-meta">
+            <span class="badge badge-blue">Edisi ${b.edisi}</span>
+            <span class="badge badge-blue">${b.jenisBarang}</span>
+          </div>
+          <div class="book-footer">
+            <div>
+              <div class="stok-count">${b.stok.toLocaleString('id-ID')}</div>
+              <div class="stok-label">Stok</div>
+            </div>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span class="badge badge-${stokBadge}">${stokLabel}</span>
+              <button class="btn btn-outline btn-sm" onclick="lihatDetail(${dataBahanAjar.indexOf(b)})">Detail</button>
+            </div>
+          </div>
+        </div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function renderTableRows() {
+    const tbody = document.getElementById('stokTableBody');
+    tbody.innerHTML = '';
+    if (displayData.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-3);padding:28px">Tidak ada data.</td></tr>';
+      return;
+    }
+    displayData.forEach(b => {
+      const stokBadge = b.stok > 300 ? 'green' : b.stok > 150 ? 'amber' : 'red';
+      const stokLabel = b.stok > 300 ? 'Tersedia' : b.stok > 150 ? 'Terbatas' : 'Hampir Habis';
+      const idx = dataBahanAjar.indexOf(b);
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><img src="${b.cover}" alt="${b.namaBarang}" style="width:44px;height:60px;object-fit:cover;border-radius:4px" onerror="this.style.display='none'" /></td>
+        <td><code style="font-size:12px">${b.kodeLokasi}</code></td>
+        <td><span class="badge badge-blue">${b.kodeBarang}</span></td>
+        <td><strong>${b.namaBarang}</strong></td>
+        <td>${b.jenisBarang}</td>
+        <td>Edisi ${b.edisi}</td>
+        <td><strong>${b.stok.toLocaleString('id-ID')}</strong></td>
+        <td><span class="badge badge-${stokBadge}">${stokLabel}</span></td>
+        <td><button class="btn btn-outline btn-sm" onclick="lihatDetail(${idx})">Detail</button></td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  function lihatDetail(idx) {
+    const b = dataBahanAjar[idx];
+    const stokBadge = b.stok > 300 ? 'green' : b.stok > 150 ? 'amber' : 'red';
+    const stokLabel = b.stok > 300 ? 'Tersedia' : b.stok > 150 ? 'Terbatas' : 'Hampir Habis';
+    document.getElementById('detailContent').innerHTML = `
+      <div style="display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap">
+        <img src="${b.cover}" alt="${b.namaBarang}" style="width:120px;border-radius:8px;box-shadow:0 4px 16px rgba(0,0,0,.15)"
+          onerror="this.style.display='none'" />
+        <div style="flex:1;min-width:180px">
+          <div style="font-size:12px;color:var(--ut-sky);font-weight:700;margin-bottom:4px">${b.kodeBarang}</div>
+          <h3 style="font-size:18px;margin-bottom:12px">${b.namaBarang}</h3>
+          <dl style="display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:14px">
+            <dt style="color:var(--text-3);font-weight:600">Kode Lokasi</dt><dd>${b.kodeLokasi}</dd>
+            <dt style="color:var(--text-3);font-weight:600">Jenis</dt>       <dd>${b.jenisBarang}</dd>
+            <dt style="color:var(--text-3);font-weight:600">Edisi</dt>       <dd>${b.edisi}</dd>
+            <dt style="color:var(--text-3);font-weight:600">Stok</dt>
+            <dd><strong style="font-size:18px">${b.stok.toLocaleString('id-ID')}</strong> <span class="badge badge-${stokBadge}" style="margin-left:6px">${stokLabel}</span></dd>
+          </dl>
+          <div style="margin-top:16px">
+            <div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:${Math.min(100, b.stok / 6)}%"></div></div>
+            <p style="font-size:11px;color:var(--text-3);margin-top:4px">Estimasi penggunaan stok</p>
+          </div>
+        </div>
+      </div>
+    `;
+    openModal('modalDetail');
+  }
+
+  function tambahStok() {
+    const lokasi = document.getElementById('inpLokasi').value.trim();
+    const kode   = document.getElementById('inpKode').value.trim();
+    const nama   = document.getElementById('inpNama').value.trim();
+    const jenis  = document.getElementById('inpJenis').value;
+    const edisi  = document.getElementById('inpEdisi').value.trim();
+    const stok   = parseInt(document.getElementById('inpStok').value);
+
+    if (!lokasi || !kode || !nama || !edisi || isNaN(stok) || stok < 0) {
+      showAlert('tambahAlert', 'Semua field wajib diisi dengan benar.', 'error');
+      return;
+    }
+
+    const newItem = {
+      kodeLokasi: lokasi,
+      kodeBarang: kode.toUpperCase(),
+      namaBarang: nama,
+      jenisBarang: jenis,
+      edisi: edisi,
+      stok: stok,
+      cover: ''
+    };
+    dataBahanAjar.push(newItem);
+    displayData = [...dataBahanAjar];
+
+    // Reset form
+    ['inpLokasi','inpKode','inpNama','inpEdisi','inpStok'].forEach(id => document.getElementById(id).value = '');
+
+    closeModal('modalTambah');
+    renderAll();
+    showAlert('stokAlert', `Data bahan ajar "<strong>${nama}</strong>" berhasil ditambahkan!`, 'success');
+  }
+
+  // Initial render
+  setView('grid');
+</script>
+</body>
+</html>

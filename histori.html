@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SITTA – Histori Transaksi</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+<nav class="navbar" id="navbar"></nav>
+
+<main class="page">
+  <div class="page-header fade-in-up">
+    <h1>🕐 Histori Transaksi Bahan Ajar</h1>
+    <p>Riwayat seluruh transaksi pengiriman bahan ajar</p>
+  </div>
+
+  <!-- Filter Bar -->
+  <div class="card fade-in-up delay-1" style="margin-bottom:24px">
+    <div class="card-body">
+      <div class="filter-bar">
+        <div class="input-icon-wrap">
+          <span class="icon">🔍</span>
+          <input type="text" id="filterSearch" class="form-control" placeholder="Cari nama / nomor DO..." oninput="renderHistori()" style="min-width:220px" />
+        </div>
+        <select id="filterStatus" class="form-control" onchange="renderHistori()">
+          <option value="">Semua Status</option>
+          <option value="Dikirim">Dikirim</option>
+          <option value="Dalam Perjalanan">Dalam Perjalanan</option>
+          <option value="Diproses">Diproses</option>
+        </select>
+        <button class="btn btn-outline btn-sm" onclick="resetFilter()">Reset Filter</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Table -->
+  <div class="card fade-in-up delay-2">
+    <div class="card-body" style="padding:0">
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Nomor DO</th>
+              <th>Nama Penerima</th>
+              <th>Ekspedisi</th>
+              <th>Tanggal Kirim</th>
+              <th>Paket</th>
+              <th>Total</th>
+              <th>Status</th>
+              <th>Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="historiBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/script.js"></script>
+<script>
+  if (!requireAuth()) throw new Error('not auth');
+  renderNavbar('histori');
+
+  function resetFilter() {
+    document.getElementById('filterSearch').value = '';
+    document.getElementById('filterStatus').value = '';
+    renderHistori();
+  }
+
+  function renderHistori() {
+    const q      = document.getElementById('filterSearch').value.trim().toLowerCase();
+    const status = document.getElementById('filterStatus').value;
+
+    let rows = Object.values(dataTracking).filter(t => {
+      const matchQ = !q || t.nama.toLowerCase().includes(q) || t.nomorDO.includes(q);
+      const matchS = !status || t.status === status;
+      return matchQ && matchS;
+    });
+
+    const tbody = document.getElementById('historiBody');
+    tbody.innerHTML = '';
+
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;padding:28px;color:var(--text-3)">Tidak ada transaksi yang cocok dengan filter.</td></tr>';
+      return;
+    }
+
+    rows.forEach((t, i) => {
+      const statusColors = { 'Dikirim':'badge-green', 'Dalam Perjalanan':'badge-amber', 'Diproses':'badge-blue', 'Gagal':'badge-red' };
+      const badgeClass = statusColors[t.status] || 'badge-blue';
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="color:var(--text-3)">${i+1}</td>
+        <td><strong>${t.nomorDO}</strong></td>
+        <td>${t.nama}</td>
+        <td>${t.ekspedisi}</td>
+        <td>${formatTanggal(t.tanggalKirim)}</td>
+        <td><code style="font-size:12px">${t.paket}</code></td>
+        <td><strong>${t.total}</strong></td>
+        <td><span class="badge ${badgeClass}">${t.status}</span></td>
+        <td>
+          <a href="tracking.html" class="btn btn-outline btn-sm"
+            onclick="sessionStorage.setItem('autoTrack','${t.nomorDO}')">
+            🔍 Lacak
+          </a>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  renderHistori();
+</script>
+</body>
+</html>

@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SITTA – Laporan</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <style>
+    .tab-bar { display:flex; gap:4px; margin-bottom:24px; background:var(--surface); border-radius:var(--radius-sm); padding:4px; box-shadow:var(--shadow-sm); width:fit-content; border:1px solid var(--border); }
+    .tab-btn { padding:9px 20px; border-radius:6px; border:none; background:none; font-size:14px; font-weight:600; color:var(--text-2); cursor:pointer; transition:background .15s,color .15s; }
+    .tab-btn.active { background:var(--ut-navy); color:#fff; }
+    .do-row { display:grid; grid-template-columns:auto 1fr 140px 80px; gap:12px; align-items:center; padding:14px 0; border-bottom:1px solid var(--border); }
+    .do-row:last-child { border-bottom:none; }
+  </style>
+</head>
+<body>
+
+<nav class="navbar" id="navbar"></nav>
+
+<main class="page">
+  <div class="page-header fade-in-up">
+    <h1>📊 Laporan</h1>
+    <p>Monitoring progress dan rekap bahan ajar</p>
+  </div>
+
+  <div class="tab-bar fade-in-up delay-1">
+    <button class="tab-btn" id="tabMonitoring" onclick="showTab('monitoring')">📈 Monitoring Progress DO</button>
+    <button class="tab-btn" id="tabRekap"      onclick="showTab('rekap')">📋 Rekap Bahan Ajar</button>
+  </div>
+
+  <!-- Tab: Monitoring -->
+  <div id="panelMonitoring">
+    <div class="stats-grid" style="margin-bottom:24px">
+      <div class="stat-card fade-in-up delay-1">
+        <div class="stat-icon blue">📦</div>
+        <div class="stat-info"><p>Total DO</p><h3 id="monTotal">0</h3></div>
+      </div>
+      <div class="stat-card fade-in-up delay-2">
+        <div class="stat-icon green">✅</div>
+        <div class="stat-info"><p>Selesai Dikirim</p><h3 id="monSelesai">0</h3></div>
+      </div>
+      <div class="stat-card fade-in-up delay-3">
+        <div class="stat-icon amber">🚚</div>
+        <div class="stat-info"><p>Dalam Perjalanan</p><h3 id="monPerjalanan">0</h3></div>
+      </div>
+      <div class="stat-card fade-in-up delay-4">
+        <div class="stat-icon red">⏳</div>
+        <div class="stat-info"><p>Diproses</p><h3 id="monDiproses">0</h3></div>
+      </div>
+    </div>
+
+    <div class="card fade-in-up">
+      <div class="card-body">
+        <p class="card-title" style="margin-bottom:4px">Progress Pengiriman Delivery Order</p>
+        <p class="card-sub" style="margin-bottom:20px">Status semua DO yang sedang diproses</p>
+        <div id="doList"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tab: Rekap -->
+  <div id="panelRekap" style="display:none">
+    <div class="card fade-in-up">
+      <div class="card-body" style="padding:0">
+        <div style="padding:20px 24px;border-bottom:1px solid var(--border)">
+          <p class="card-title">Rekap Stok Bahan Ajar</p>
+          <p class="card-sub">Ringkasan ketersediaan per kode barang</p>
+        </div>
+        <div class="table-wrap">
+          <table id="rekapTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Kode Barang</th>
+                <th>Nama Bahan Ajar</th>
+                <th>Kode Lokasi</th>
+                <th>Jenis</th>
+                <th>Edisi</th>
+                <th>Stok</th>
+                <th>Progress Stok</th>
+              </tr>
+            </thead>
+            <tbody id="rekapBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="js/data.js"></script>
+<script src="js/script.js"></script>
+<script>
+  if (!requireAuth()) throw new Error('not auth');
+  renderNavbar('');
+
+  function showTab(tab) {
+    document.getElementById('panelMonitoring').style.display = tab === 'monitoring' ? 'block' : 'none';
+    document.getElementById('panelRekap').style.display      = tab === 'rekap'      ? 'block' : 'none';
+    document.getElementById('tabMonitoring').classList.toggle('active', tab === 'monitoring');
+    document.getElementById('tabRekap').classList.toggle('active', tab === 'rekap');
+  }
+
+  // Monitoring
+  const trackingArr = Object.values(dataTracking);
+  document.getElementById('monTotal').textContent     = trackingArr.length;
+  document.getElementById('monSelesai').textContent   = trackingArr.filter(t => t.status === 'Dikirim').length;
+  document.getElementById('monPerjalanan').textContent = trackingArr.filter(t => t.status === 'Dalam Perjalanan').length;
+  document.getElementById('monDiproses').textContent  = trackingArr.filter(t => t.status === 'Diproses').length;
+
+  const doList = document.getElementById('doList');
+  trackingArr.forEach(t => {
+    const pct = t.status === 'Dikirim' ? 100 : t.status === 'Dalam Perjalanan' ? 65 : 30;
+    const badgeClass = t.status === 'Dikirim' ? 'badge-green' : t.status === 'Dalam Perjalanan' ? 'badge-amber' : 'badge-blue';
+    const row = document.createElement('div');
+    row.className = 'do-row';
+    row.innerHTML = `
+      <div>
+        <div style="font-size:11px;color:var(--text-3);font-weight:600">NO. DO</div>
+        <div style="font-weight:700;font-size:14px">${t.nomorDO}</div>
+      </div>
+      <div>
+        <div style="font-weight:600;font-size:14px;margin-bottom:2px">${t.nama}</div>
+        <div style="font-size:12px;color:var(--text-2)">${t.ekspedisi} · ${formatTanggal(t.tanggalKirim)}</div>
+        <div style="margin-top:6px;display:flex;align-items:center;gap:8px">
+          <div class="progress-bar-wrap" style="flex:1;max-width:200px"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:12px;color:var(--text-2)">${pct}%</span>
+        </div>
+      </div>
+      <div><span class="badge ${badgeClass}">${t.status}</span></div>
+      <div style="font-weight:700;font-size:14px">${t.total}</div>
+    `;
+    doList.appendChild(row);
+  });
+
+  // Rekap
+  const rekapBody = document.getElementById('rekapBody');
+  const maxStok = Math.max(...dataBahanAjar.map(b => b.stok));
+  dataBahanAjar.forEach((b, i) => {
+    const pct = Math.round((b.stok / maxStok) * 100);
+    const stokBadge = b.stok > 300 ? 'green' : b.stok > 150 ? 'amber' : 'red';
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="color:var(--text-3)">${i+1}</td>
+      <td><span class="badge badge-blue">${b.kodeBarang}</span></td>
+      <td><strong>${b.namaBarang}</strong></td>
+      <td><code style="font-size:12px">${b.kodeLokasi}</code></td>
+      <td>${b.jenisBarang}</td>
+      <td>Edisi ${b.edisi}</td>
+      <td><strong class="${b.stok < 200 ? 'badge badge-'+stokBadge : ''}">${b.stok.toLocaleString('id-ID')}</strong></td>
+      <td style="min-width:140px">
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="progress-bar-wrap" style="flex:1"><div class="progress-bar-fill" style="width:${pct}%"></div></div>
+          <span style="font-size:12px;color:var(--text-2);white-space:nowrap">${pct}%</span>
+        </div>
+      </td>
+    `;
+    rekapBody.appendChild(tr);
+  });
+
+  // Check URL tab param
+  const params = new URLSearchParams(window.location.search);
+  showTab(params.get('tab') || 'monitoring');
+</script>
+</body>
+</html>
